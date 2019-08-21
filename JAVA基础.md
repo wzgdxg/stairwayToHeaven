@@ -1,5 +1,7 @@
 ## 了解过字节码的编译过程吗？
 
+## 如何实现两金额数据相加（最多小数点两位）?
+
 
 ## 双亲委派模型中，从顶层到底层，都是哪些类加载器，分别加载哪些类？
 *_相似问题：说说双亲委派模型？_*  
@@ -62,16 +64,94 @@
 
 > [真正理解线程上下文类加载器（多案例分析）](https://blog.csdn.net/yangcheng33/article/details/52631940)
 
+## JAVA动态编译方式？
+```
+public static void main(String[] args) throws Exception{
+    JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+    int flag = compiler.run(null, null, null,"D:\\HelloWorld.java");
+    System.out.println(flag == 0 ? "编译成功" : "编译失败");
+}
+```
+
 ## 讲讲JAVA的反射机制？
+反射机制是在运行状态中，对于任意一个类，都能够知道这个类的所有属性和方法，还有父类，接口信息，注解信息；对于任意一个对象，都能够调用它的任意一个方法和属性；这种动态获取的信息以及动态调用对象的方法的功能称为java语言的反射机制。
+
+| 方法 | 作用 |
+| --- | --- |
+| getDeclaredMethods() | 获取所有的方法 |
+| getReturnType() | 获得方法的返回类型 |
+| getParameterTypes() | 获得方法的传入参数类型 |
+| getDeclaredMethod("",.class,……) | 获得特定的方法 |
+| getDeclaredConstructors() | 获取所有的构造方法 |
+| getDeclaredConstructor(.class,……) | 获取特定的构造方法 |
+| getSuperclass() | 获取某类的父类 |
+| getInterfaces() | 获取某类实现的接口 |
+| method.invoke(owner, args); | 执行方法 |
+| field.set(owner, value); | 设置属性值 |
+| field.get(owner); | 获取属性值 |
+| setAccessible(true) | 私有属性或者方法，需要打开可见权限 |
+| asSubclass(Class<U> clazz) | 作用是将调用这个方法的class对象转换成由clazz参数所表示的class对象的某个子类。 |
+| cast(object) | HttpServletRequest request = HttpServletRequest.class.cast(req) |
+
+注:要想获取到annotation，annotation必须标注@Retention(RetentionPolicy.RUNTIME)
+
+> [Java基础之反射机制详解](https://www.jianshu.com/p/381ec446a318)  
+> [Java中反射机制详解](https://www.cnblogs.com/whgk/p/6122036.html)
 
 ## 反射的原理，反射创建类实例的三种方式是什么？
+1、Class clazz1 = Class.forName("全限定类名");　　//获取声明时的类
+
+2、Class clazz2  = Person.class;　　　　//获取运行时的类
+
+3、Class clazz3 = p.getClass();　　　　//通过类名来获得类
 
 ## 反射中，Class.forName和ClassLoader区别？
+Java中Class.forName和classloader都可以用来对类进行加载。  
+Class.forName除了将类的.class文件加载到jvm中之外，还会对类进行解释，执行类中的static块。  
+而classloader只干一件事情，就是将.class文件加载到jvm中，不会执行static中的内容，只有在newInstance才会去执行static块。
 
+mysql驱动为什么使用Class.forName来加载驱动类，而不是classloader：
+```
+public class Driver extends NonRegisteringDriver implements java.sql.Driver {
+    public Driver() throws SQLException {
+    }
 
-## 如何实现两金额数据相加（最多小数点两位）?
+    static {
+        try {
+            DriverManager.registerDriver(new Driver());
+        } catch (SQLException var1) {
+            throw new RuntimeException("Can't register driver!");
+        }
+    }
+}
+```
+正是利用了Class.forName可以初始化类，执行static块中注册驱动到驱动管理器的代码。而classloader不会执行static块中的代码。
+
+## Java 泛型是什么？
+讲泛型不可不提类型擦除，只有明白了类型擦除，才算明白了泛型，也就可以避开使用泛型时的坑。  
+严格来说，Java 的泛型并不是真正的泛型。Java 的泛型是 JDK1.5 之后添加的特性，为了兼容之前版本的代码，其实现引入了类型擦除的概念。  
+类型擦除指的是：Java 的泛型代码在编译时，由编译器进行类型检查，之后会将其泛型类型擦除掉，只保存原生类型，如 Generics<Long> 被擦除后是 Generics，我们常用的 List<String> 被擦除后只剩下 List。  
+接下来的 Java 代码在运行时，使用的还是原生类型，并没有一种新的类型叫 泛型。这样，也就兼容了泛型之前的代码。  
+实际上，实现了泛型的代码的字节码内会有一个 signature 字段，其中指向了常量表中泛型的真正类型，所以泛型的真正类型，还可以通过反射获取得到。
+
+那么类型擦除之后，Java 是如何保证泛型代码执行期间没有问题的呢？  
+我们将一段泛型代码用 javac 命令编译成 class 文件后，再使用 javap 命令查看其字节码信息：  
+我们会发现，类型里的 T 被替换成了 Object 类型，而在 main 方法里 getField 字段时，进行了类型转换(checkcast)，如此，我们可以看出来 Java 的泛型实现了，一段泛型代码的编译运行过程如下：  
+编译期间编译器检查传入的泛型类型与声明的泛型类型是否匹配，不匹配则报出编译器错误；  
+编译器执行类型擦除，字节码内只保留其原始类型；  
+运行期间，再将 Object 转换为所需要的泛型类型。  
+也就是说：Java 的泛型实际上是由编译器实现的，将泛型类型转换为 Object 类型，在运行期间再进行状态转换。  
+
+> [Java高级特性之泛型](https://blog.csdn.net/shunqixing/article/details/80319396)  
+> [Java 泛型，你了解类型擦除吗？](https://blog.csdn.net/briblue/article/details/76736356)
+
+## 为什么泛型不能是基础类型如int,long等?
+因为java的泛型是用类型擦除实现的，不是真正的泛型，实际运行阶段用的都是Object(当然有泛型限定的除外, 如T extends String, 类型就是String)，而基本数据类型不继承自Object，也就无法在泛型中使用。
+或者说因为编译器进行类型擦除后会使用 Object 替换泛型类型，并在运行期间进行类型转换，而基础类型和 Object 之间是无法替换和转换的。
 
 ## static有什么用途？（请至少说明两种）
+
+## final有什么用途？
 
 ## 全局变量和局部变量在内存中是否有区别？如果有，是什么区别？
 
